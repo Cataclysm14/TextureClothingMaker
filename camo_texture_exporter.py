@@ -26,13 +26,37 @@ def overlayImg(img,mask,offset=(0,0)):
     img.paste(mask, (offset[0],-offset[1]), mask)
     return img
 
-def exportClothings(dumpFiles=False):
+def tryCreateDir(directory):
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
 
+def tryDeleteDir(directory):
+    if os.path.isdir(directory):
+        shutil.rmtree(directory)
+
+def resetDir(directory):
+    tryDeleteDir(directory)
+    os.mkdir(directory)
+
+def tryCreateNestedDir(directory):
+    directoryList = directory.split("/")
+    folder = ""
+    for folderIndex in range(len(directoryList)):
+        folder = folder + directoryList[folderIndex] + "/"
+        tryCreateDir(folder)
+
+def toPascalCase(string):
+    return re.sub(r"(^|_)([a-z])", lambda match: match.group(2).upper(), string)
+
+def exportClothings(dumpFiles=False):
+    resetDir("Outputs")
+
+    #Fetch camos
     camoList = os.listdir("Textures")
     camoDirs = []
     for camo in camoList:
         camo = camo.replace(".png","")
-        camo = re.sub(r"(^|_)([a-z])", lambda match: match.group(2).upper(), camo)
+        camo = toPascalCase(camo)
         camoDirs.append(camo)
 
     #Get a list of every template folders.
@@ -41,48 +65,33 @@ def exportClothings(dumpFiles=False):
     templateList = [x.replace("Templates\\","") for x in templateList]
 
     for camoIndex in range(len(camoList)):
-        if dumpFiles:
-            camo = camoList[camoIndex]
-            camoPath = ""
-            camoImg = Image.open("Textures/"+camo)
-        else:
-            camo = camoList[camoIndex]
-            camoPath = camoDirs[camoIndex]+"/"
-            camoImg = Image.open("Textures/"+camo)
-
-            os.mkdir("Outputs/"+camoPath)
-        
+        camo = camoList[camoIndex]
+        camoPath = camoDirs[camoIndex]
+        camoImg = Image.open("Textures/"+camo)
         camo = camo.replace(".png","")
         for clothing in templateList:
-            #Make the dir and save names.
-            template_directory_name = "Templates/"+clothing
-        
-            #Save the dict relating to this clothing.
-            clothing_values = json.load(open(template_directory_name+"/params.json"))
+            templateDirectorName = "Templates/" + clothing
+            clothingJson = json.load(open(templateDirectorName+"/params.json"))
+            if dumpFiles:
+                outputsDirectoryName = "Outputs/"+clothing.replace("CamoName",camo)
+            else:
+                outputsDirectoryName = "Outputs/"+clothingJson["path"]+"/"+camoPath+"/"+clothing.replace("CamoName",camo)
 
-            #Save output dirs
-            outputs_directory_name = str("Outputs/"+clothing_values["path"]+"/"+camoPath+clothing).replace("CamoName",camo)
-
-            #Create type dir
-            if not os.path.isdir(str("Outputs/"+clothing_values["path"])):
-                os.mkdir(str("Outputs/"+clothing_values["path"]))
-
-            #Create camo dir
-            os.mkdir(outputs_directory_name)
-
+            #Create the dir
+            tryCreateNestedDir(outputsDirectoryName)
             #Copy the meta.json.
-            shutil.copy(template_directory_name+"/meta.json",outputs_directory_name)
+            shutil.copy(templateDirectorName+"/meta.json",outputsDirectoryName)
             
             #Apply mask and shading
-            mask = Image.open(template_directory_name+"/equipped-"+clothing_values["type"]+"_mask.png")
-            shading = Image.open(template_directory_name+"/equipped-"+clothing_values["type"]+"_shading.png")
+            mask = Image.open(templateDirectorName+"/equipped-"+clothingJson["type"]+"_mask.png")
+            shading = Image.open(templateDirectorName+"/equipped-"+clothingJson["type"]+"_shading.png")
 
             img = camoImg
             img = overlayImg(img,mask)
             img = overlayImg(img,shading)
             img = colorReplace(img)
             img = removeAlpha(img)
-            img.save(outputs_directory_name+"/equipped-"+clothing_values["type"]+".png")
+            img.save(outputsDirectoryName+"/equipped-"+clothingJson["type"]+".png")
 
             frontSprite = img.crop((0,0,32,32))
             backSprite = img.crop((32,0,64,32))
@@ -90,56 +99,55 @@ def exportClothings(dumpFiles=False):
             #icon
             icon = Image.new("RGBA",(32,32))
             offset = (
-                clothing_values["frontAnchor"][0]-clothing_values["iconOffset"][0],
-                clothing_values["frontAnchor"][1]-clothing_values["iconOffset"][1]
+                clothingJson["frontAnchor"][0]-clothingJson["iconOffset"][0],
+                clothingJson["frontAnchor"][1]-clothingJson["iconOffset"][1]
                 )
             icon = overlayImg(icon,frontSprite,offset)
-            icon.save(outputs_directory_name+"/icon"+".png")
+            icon.save(outputsDirectoryName+"/icon"+".png")
 
             #inhand-left
             inhandLeft = Image.new("RGBA",(64,64))
-            for direction in clothing_values["inhandLeftOffset"]:
+            for direction in clothingJson["inhandLeftOffset"]:
                 if direction[2] == "front":
                     offset = (
-                        direction[0]-clothing_values["frontAnchor"][0],
-                        -(direction[1]-clothing_values["frontAnchor"][1])
+                        direction[0]-clothingJson["frontAnchor"][0],
+                        -(direction[1]-clothingJson["frontAnchor"][1])
                         )
                     sprite = frontSprite
                 else:
                     offset = (
-                        direction[0]-clothing_values["backAnchor"][0],
-                        -(direction[1]-clothing_values["backAnchor"][1])
+                        direction[0]-clothingJson["backAnchor"][0],
+                        -(direction[1]-clothingJson["backAnchor"][1])
                         )
                     sprite = backSprite
                 inhandLeft = overlayImg(inhandLeft,sprite,offset)
-            inhandLeft.save(outputs_directory_name+"/inhand-left"+".png")
+            inhandLeft.save(outputsDirectoryName+"/inhand-left"+".png")
             
             #inhand-right
             inhandRight = Image.new("RGBA",(64,64))
-            for direction in clothing_values["inhandRightOffset"]:
+            for direction in clothingJson["inhandRightOffset"]:
                 if direction[2] == "front":
                     offset = (
-                        direction[0]-clothing_values["frontAnchor"][0],
-                        -(direction[1]-clothing_values["frontAnchor"][1])
+                        direction[0]-clothingJson["frontAnchor"][0],
+                        -(direction[1]-clothingJson["frontAnchor"][1])
                         )
                     sprite = frontSprite
                 else:
                     offset = (
-                        direction[0]-clothing_values["backAnchor"][0],
-                        -(direction[1]-clothing_values["backAnchor"][1])
+                        direction[0]-clothingJson["backAnchor"][0],
+                        -(direction[1]-clothingJson["backAnchor"][1])
                         )
                     sprite = backSprite
                 inhandRight = overlayImg(inhandRight,sprite,offset)
-            inhandRight.save(outputs_directory_name+"/inhand-right"+".png")
-
-shutil.rmtree("Outputs")
-os.mkdir("Outputs")
+            inhandRight.save(outputsDirectoryName+"/inhand-right"+".png")
 
 dumpToggle = input("Dump files?: Y/N >> ")
 if "Y" in  dumpToggle:
     dumpToggle = True
 else: dumpToggle = False
 exportClothings(dumpToggle)
+
+# exportClothings()
 
 # while 0 != 1:
 #     a = 1   
