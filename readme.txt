@@ -1,0 +1,1 @@
+replace the camo.png file's content with whatever camo you'd like to have then run the script, input the name in snakecase and fetch in the Outputs folder.
