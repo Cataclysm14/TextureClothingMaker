@@ -47,7 +47,7 @@ def exportClothings(dumpFiles=False):
             camoImg = Image.open("Textures/"+camo)
         else:
             camo = camoList[camoIndex]
-            camoPath = camoDirs[camoIndex]
+            camoPath = camoDirs[camoIndex]+"/"
             camoImg = Image.open("Textures/"+camo)
 
             os.mkdir("Outputs/"+camoPath)
@@ -61,7 +61,7 @@ def exportClothings(dumpFiles=False):
             clothing_values = json.load(open(template_directory_name+"/params.json"))
 
             #Save output dirs
-            outputs_directory_name = str("Outputs/"+clothing_values["path"]+"/"+camoPath+"/"+clothing).replace("CamoName",camo)
+            outputs_directory_name = str("Outputs/"+clothing_values["path"]+"/"+camoPath+clothing).replace("CamoName",camo)
 
             #Create type dir
             if not os.path.isdir(str("Outputs/"+clothing_values["path"])):
