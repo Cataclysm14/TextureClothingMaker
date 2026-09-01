@@ -86,7 +86,7 @@ def exportClothings(dumpFiles=False):
             mask = Image.open(templateDirectorName+"/equipped-"+clothingJson["type"]+"_mask.png")
             shading = Image.open(templateDirectorName+"/equipped-"+clothingJson["type"]+"_shading.png")
 
-            img = camoImg
+            img = camoImg.copy()
             img = overlayImg(img,mask)
             img = overlayImg(img,shading)
             img = colorReplace(img)
